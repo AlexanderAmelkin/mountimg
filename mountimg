@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# Copyright (C) 2016 Alexander Amelkin <alexander@amelkin.msk.ru>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# $Id$
+#
+
+IMAGE="$1"
+PART="$2"
+WHERE="$3"
+shift 3
+OPTIONS="$*"
+[ -n "$OPTIONS" ] && OPTIONS="-o $OPTIONS"
+
+if [ ! -f "$IMAGE" ] || [ -z "$PART" ] || [ -z "$WHERE" ]; then
+	echo "Disk image partition mounter by Alexander Amelkin."
+	echo "Version 1.0"
+	echo
+	echo "Usage: mountimg <image> <partition> <where> [<mount options>]"
+	echo "Example: mountimg sdcard.img 1 /mnt/sdcard0p1 defaults,ro,iocharset=utf8"
+	exit 1
+fi
+
+# First, delete all unreferenced loop device setups
+losetup -D &>/dev/null
+
+# Now find the first unused loop device and use it
+LODEV=`losetup -f` || { echo "Failed to find a free loopback device"; exit 1; }
+OFFSET=$(
+	sfdisk -l $IMAGE |
+	grep $IMAGE$PART |
+	awk 'BEGIN { FS="[ *\t]+"}
+	     /.+/ { print $2; found=1 }
+	     END { if(!found) exit 1 }'
+	) || { echo "No such partition in the image"; exit 1; }
+
+echo "Mounting $IMAGE partition $PART (offset $OFFSET) to $WHERE via $LODEV"
+
+set -e
+
+losetup $LODEV $IMAGE -o $((OFFSET * 512))
+mount $OPTIONS $LODEV $WHERE || { losetup -d $LODEV; exit 1; }
+
+echo "Partition mounted. Don't forget to run 'losetup -d $LODEV' after unmounting."
