@@ -6,7 +6,7 @@ as a loop device.
 ## Usage:
 
     $ sudo mountimg <disk_image_file> <partition_number> <mountpoint> <mountoptions>
-    
+
 ## Example:
 
-    $ sudo mountimg mydisk.img 1 /mnt/mydiskp1 defaults,ro,codepage=866,iocharset=utf-8
+    $ sudo mountimg mydisk.img 1 /mnt/mydiskp1 -t vfat -o ro,codepage=866,iocharset=utf-8
