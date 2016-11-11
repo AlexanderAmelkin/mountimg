@@ -35,11 +35,7 @@ if [ ! -f "$IMAGE" ] || [ -z "$PART" ] || [ -z "$WHERE" ]; then
 	exit 1
 fi
 
-# First, delete all unreferenced loop device setups
-losetup -D &>/dev/null
-
 # Now find the first unused loop device and use it
-LODEV=`losetup -f` || { echo "Failed to find a free loopback device"; exit 1; }
 OFFSET=$(
 	sfdisk -l $IMAGE |
 	grep $IMAGE$PART |
@@ -52,7 +48,4 @@ echo "Mounting $IMAGE partition $PART (offset $OFFSET) to $WHERE via $LODEV"
 
 set -e
 
-losetup $LODEV $IMAGE -o $((OFFSET * 512))
-mount $OPTIONS $LODEV $WHERE || { losetup -d $LODEV; exit 1; }
-
-echo "Partition mounted. Don't forget to run 'losetup -d $LODEV' after unmounting."
+mount $OPTIONS -o loop,offset=$((OFFSET * 512)) $IMAGE $WHERE
